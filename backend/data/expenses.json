@@ -1,0 +1,104 @@
+[
+  {
+    "id": 3,
+    "userId": 1,
+    "amount": 45,
+    "category": "Entertainment",
+    "date": "2024-11-15",
+    "vendor": "PVR",
+    "notes": "Finding Dory",
+    "attachments": [
+      {
+        "filename": "1759002015486-456624305-invoice.jpg",
+        "originalName": "invoice.jpg",
+        "path": "/uploads/1759002015486-456624305-invoice.jpg"
+      }
+    ],
+    "createdAt": "2025-09-27T19:40:15.529Z"
+  },
+  {
+    "id": 4,
+    "userId": 1,
+    "amount": 1000,
+    "category": "Shopping",
+    "date": "2025-08-11",
+    "vendor": "H&M",
+    "notes": "Clothes and Shoes",
+    "attachments": [
+      {
+        "filename": "1759002989289-493039122-Commercial-Invoice-Template-TemplateLab.com_.jpg",
+        "originalName": "Commercial-Invoice-Template-TemplateLab.com_.jpg",
+        "path": "/uploads/1759002989289-493039122-Commercial-Invoice-Template-TemplateLab.com_.jpg"
+      }
+    ],
+    "createdAt": "2025-09-27T19:56:29.340Z"
+  },
+  {
+    "id": 5,
+    "userId": 1,
+    "amount": 100,
+    "category": "Bills",
+    "date": "2025-09-25",
+    "vendor": "Electric company",
+    "notes": "Electric Bill",
+    "attachments": [
+      {
+        "filename": "1759008106303-512045426-invoice.jpg",
+        "originalName": "invoice.jpg",
+        "path": "/uploads/1759008106303-512045426-invoice.jpg"
+      }
+    ],
+    "createdAt": "2025-09-27T21:21:46.346Z"
+  },
+  {
+    "id": 6,
+    "userId": 1,
+    "amount": 80,
+    "category": "Transport",
+    "date": "2025-09-28",
+    "vendor": "Uber",
+    "notes": "Receipt scanned and processed",
+    "attachments": [
+      {
+        "filename": "1759010380225-994900007-invoice.jpg",
+        "originalName": "invoice.jpg",
+        "path": "/uploads/1759010380225-994900007-invoice.jpg"
+      }
+    ],
+    "createdAt": "2025-09-27T21:59:40.270Z"
+  },
+  {
+    "id": 7,
+    "userId": 1,
+    "amount": 1800,
+    "category": "Education",
+    "date": "2025-09-28",
+    "vendor": "Tanvar Book Store",
+    "notes": "Text Books",
+    "attachments": [
+      {
+        "filename": "1759010967384-643889499-Commercial-Invoice-Template-TemplateLab.com_.jpg",
+        "originalName": "Commercial-Invoice-Template-TemplateLab.com_.jpg",
+        "path": "/uploads/1759010967384-643889499-Commercial-Invoice-Template-TemplateLab.com_.jpg"
+      }
+    ],
+    "createdAt": "2025-09-27T22:12:45.637Z"
+  },
+  {
+    "id": 8,
+    "userId": 1,
+    "amount": 800,
+    "category": "Food",
+    "date": "2025-09-28",
+    "vendor": "Nandana Palace",
+    "notes": "Biriyani and Snacks",
+    "attachments": [
+      {
+        "filename": "1759010967413-347612186-invoice.jpg",
+        "originalName": "invoice.jpg",
+        "path": "/uploads/1759010967413-347612186-invoice.jpg"
+      }
+    ],
+    "createdAt": "2025-09-27T22:12:45.658Z"
+  }
+]
