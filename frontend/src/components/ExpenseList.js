@@ -7,8 +7,9 @@ import { useSettings } from '../context/SettingsContext';
 
 const { Option } = Select;
 
-const ExpenseList = () => {
+const ExpenseList = ({ advancedFilters = {}, searchTerm = '' }) => {
   const [expenses, setExpenses] = useState([]);
+  const [filteredExpenses, setFilteredExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingKey, setEditingKey] = useState('');
   const [editForm, setEditForm] = useState({});
@@ -16,9 +17,209 @@ const ExpenseList = () => {
   // Use settings context for formatting
   const { formatCurrency, formatDateShort, getCurrencySymbol, parseCurrencyInput } = useSettings();
 
+  // Debug: Log filters when they change
+  useEffect(() => {
+    console.log('ExpenseList received filters:', advancedFilters);
+    console.log('ExpenseList received searchTerm:', searchTerm);
+  }, [advancedFilters, searchTerm]);
+
+  // Apply filters function - Updated to handle Query Builder format
+  const applyFilters = (data) => {
+    let filtered = [...data];
+
+    // Apply fuzzy search
+    if (searchTerm && searchTerm.trim() !== '') {
+      filtered = filtered.filter(expense => {
+        const searchLower = searchTerm.toLowerCase();
+        return (
+          expense.vendor?.toLowerCase().includes(searchLower) ||
+          expense.category?.toLowerCase().includes(searchLower) ||
+          expense.notes?.toLowerCase().includes(searchLower) ||
+          expense.recordId?.toLowerCase().includes(searchLower) ||
+          expense.amount?.toString().includes(searchLower)
+        );
+      });
+    }
+
+    // Apply advanced filters from Query Builder
+    if (advancedFilters && Object.keys(advancedFilters).length > 0) {
+      console.log('Applying advanced filters:', advancedFilters);
+      
+      // Handle complex queries with logical operators
+      if (advancedFilters.conditions && advancedFilters.logicalOperator) {
+        console.log('Processing complex query with operator:', advancedFilters.logicalOperator);
+        
+        const applyCondition = (expense, condition) => {
+          const field = condition.field;
+          const operator = condition.condition;
+          const value = condition.value;
+          const valueTo = condition.valueTo;
+          
+          switch(field) {
+            case 'vendor':
+            case 'notes':
+            case 'recordId':
+              const fieldValue = (expense[field] || '').toLowerCase();
+              const searchValue = (value || '').toLowerCase();
+              switch(operator) {
+                case 'equal': return fieldValue === searchValue;
+                case 'notequal': return fieldValue !== searchValue;
+                case 'contains': return fieldValue.includes(searchValue);
+                case 'notcontains': return !fieldValue.includes(searchValue);
+                case 'startswith': return fieldValue.startsWith(searchValue);
+                case 'endswith': return fieldValue.endsWith(searchValue);
+                default: return true;
+              }
+              
+            case 'amount':
+              const amount = parseFloat(expense.amount) || 0;
+              const compareValue = parseFloat(value) || 0;
+              const compareValueTo = parseFloat(valueTo) || 0;
+              switch(operator) {
+                case 'equal': return amount === compareValue;
+                case 'notequal': return amount !== compareValue;
+                case 'lessthan': return amount < compareValue;
+                case 'lessthanorequal': return amount <= compareValue;
+                case 'greaterthan': return amount > compareValue;
+                case 'greaterthanorequal': return amount >= compareValue;
+                case 'between': return amount >= compareValue && amount <= compareValueTo;
+                case 'notbetween': return amount < compareValue || amount > compareValueTo;
+                default: return true;
+              }
+              
+            case 'date':
+              const expenseDate = moment(expense.date);
+              const compareDate = moment(value);
+              const compareDateTo = valueTo ? moment(valueTo) : null;
+              switch(operator) {
+                case 'equal': return expenseDate.isSame(compareDate, 'day');
+                case 'notequal': return !expenseDate.isSame(compareDate, 'day');
+                case 'lessthan': return expenseDate.isBefore(compareDate, 'day');
+                case 'lessthanorequal': return expenseDate.isSameOrBefore(compareDate, 'day');
+                case 'greaterthan': return expenseDate.isAfter(compareDate, 'day');
+                case 'greaterthanorequal': return expenseDate.isSameOrAfter(compareDate, 'day');
+                case 'between': return expenseDate.isBetween(compareDate, compareDateTo, 'day', '[]');
+                case 'notbetween': return !expenseDate.isBetween(compareDate, compareDateTo, 'day', '[]');
+                default: return true;
+              }
+              
+            case 'category':
+              const category = expense.category || '';
+              switch(operator) {
+                case 'equal': return category === value;
+                case 'notequal': return category !== value;
+                case 'in': return Array.isArray(value) ? value.includes(category) : category === value;
+                case 'notin': return Array.isArray(value) ? !value.includes(category) : category !== value;
+                default: return true;
+              }
+              
+            default:
+              return true;
+          }
+        };
+        
+        // Apply conditions based on logical operator
+        if (advancedFilters.logicalOperator === 'and') {
+          filtered = filtered.filter(expense => 
+            advancedFilters.conditions.every(condition => applyCondition(expense, condition))
+          );
+        } else if (advancedFilters.logicalOperator === 'or') {
+          filtered = filtered.filter(expense => 
+            advancedFilters.conditions.some(condition => applyCondition(expense, condition))
+          );
+        }
+      } else {
+        // Handle simple filters (backward compatibility with old search)
+        
+        // Vendor filter
+        if (advancedFilters.vendor) {
+          const { condition, value } = advancedFilters.vendor;
+          filtered = filtered.filter(expense => {
+            const vendorLower = (expense.vendor || '').toLowerCase();
+            const valueLower = value.toLowerCase();
+            
+            switch(condition) {
+              case 'contains': return vendorLower.includes(valueLower);
+              case 'equal':
+              case 'equals': return vendorLower === valueLower;
+              case 'startsWith': return vendorLower.startsWith(valueLower);
+              case 'endsWith': return vendorLower.endsWith(valueLower);
+              case 'notEqual':
+              case 'notEquals': return vendorLower !== valueLower;
+              case 'notContains': return !vendorLower.includes(valueLower);
+              default: return true;
+            }
+          });
+        }
+
+        // Category filter
+        if (advancedFilters.category) {
+          filtered = filtered.filter(expense => 
+            advancedFilters.category.value.includes(expense.category)
+          );
+        }
+
+        // Amount filter
+        if (advancedFilters.amount) {
+          const { condition, value, valueTo } = advancedFilters.amount;
+          filtered = filtered.filter(expense => {
+            switch(condition) {
+              case 'equal':
+              case 'equals': return expense.amount === value;
+              case 'notEqual':
+              case 'notEquals': return expense.amount !== value;
+              case 'greaterThan': return expense.amount > value;
+              case 'lessThan': return expense.amount < value;
+              case 'between': return expense.amount >= value && expense.amount <= valueTo;
+              default: return true;
+            }
+          });
+        }
+
+        // Date range filter
+        if (advancedFilters.dateRange) {
+          const { from, to } = advancedFilters.dateRange;
+          filtered = filtered.filter(expense => {
+            const expenseDate = moment(expense.date);
+            return expenseDate.isBetween(from, to, 'day', '[]');
+          });
+        }
+
+        // Notes filter
+        if (advancedFilters.notes) {
+          const { condition, value } = advancedFilters.notes;
+          filtered = filtered.filter(expense => {
+            const notesLower = (expense.notes || '').toLowerCase();
+            const valueLower = value.toLowerCase();
+            
+            switch(condition) {
+              case 'contains': return notesLower.includes(valueLower);
+              case 'equal':
+              case 'equals': return notesLower === valueLower;
+              case 'startsWith': return notesLower.startsWith(valueLower);
+              case 'endsWith': return notesLower.endsWith(valueLower);
+              case 'notEqual':
+              case 'notEquals': return notesLower !== valueLower;
+              case 'notContains': return !notesLower.includes(valueLower);
+              default: return true;
+            }
+          });
+        }
+      }
+    }
+
+    return filtered;
+  };
+
   useEffect(() => {
     fetchExpenses();
   }, []);
+
+  // Apply filters whenever they change
+  useEffect(() => {
+    const filtered = applyFilters(expenses);
+    setFilteredExpenses(filtered);
+  }, [expenses, advancedFilters, searchTerm]);
 
   const fetchExpenses = async () => {
     try {
@@ -101,6 +302,83 @@ const ExpenseList = () => {
     }
   };
 
+  // Display active filters summary
+  const getActiveFiltersDisplay = () => {
+    const filterCount = Object.keys(advancedFilters).length;
+    const hasSearch = searchTerm !== '';
+    
+    if (filterCount === 0 && !hasSearch) return null;
+
+    const filterTags = [];
+    
+    if (hasSearch) {
+      filterTags.push(
+        <Tag key="search" style={{ backgroundColor: '#fff', border: '1px solid #d9d9d9' }}>
+          Search: "{searchTerm}"
+        </Tag>
+      );
+    }
+
+    // Handle complex queries
+    if (advancedFilters.conditions && advancedFilters.logicalOperator) {
+      filterTags.push(
+        <Tag key="complex" style={{ backgroundColor: '#fff', border: '1px solid #d9d9d9' }}>
+          Complex query with {advancedFilters.conditions.length} conditions ({advancedFilters.logicalOperator.toUpperCase()})
+        </Tag>
+      );
+    } else {
+      // Handle simple filters
+      if (advancedFilters.vendor) {
+        filterTags.push(
+          <Tag key="vendor" style={{ backgroundColor: '#fff', border: '1px solid #d9d9d9' }}>
+            Vendor {advancedFilters.vendor.condition}: {advancedFilters.vendor.value}
+          </Tag>
+        );
+      }
+      if (advancedFilters.category) {
+        filterTags.push(
+          <Tag key="category" style={{ backgroundColor: '#fff', border: '1px solid #d9d9d9' }}>
+            Categories: {advancedFilters.category.value.join(', ')}
+          </Tag>
+        );
+      }
+      if (advancedFilters.amount) {
+        filterTags.push(
+          <Tag key="amount" style={{ backgroundColor: '#fff', border: '1px solid #d9d9d9' }}>
+            Amount {advancedFilters.amount.condition}: {formatCurrency(advancedFilters.amount.value)}
+            {advancedFilters.amount.valueTo && ` - ${formatCurrency(advancedFilters.amount.valueTo)}`}
+          </Tag>
+        );
+      }
+      if (advancedFilters.dateRange) {
+        filterTags.push(
+          <Tag key="dateRange" style={{ backgroundColor: '#fff', border: '1px solid #d9d9d9' }}>
+            Date: {advancedFilters.dateRange.from} to {advancedFilters.dateRange.to}
+          </Tag>
+        );
+      }
+      if (advancedFilters.notes) {
+        filterTags.push(
+          <Tag key="notes" style={{ backgroundColor: '#fff', border: '1px solid #d9d9d9' }}>
+            Notes {advancedFilters.notes.condition}: {advancedFilters.notes.value}
+          </Tag>
+        );
+      }
+    }
+
+    return (
+      <div style={{ 
+        marginBottom: '16px', 
+        padding: '12px', 
+        backgroundColor: '#f5f5f5', 
+        borderRadius: '6px',
+        border: '1px solid #e0e0e0'
+      }}>
+        <Space wrap>{filterTags}</Space>
+      </div>
+    );
+  };
+
   const columns = [
     {
       title: 'Record ID',
@@ -163,6 +441,7 @@ const ExpenseList = () => {
         { text: 'Office', value: 'Office' },
         { text: 'Shopping', value: 'Shopping' },
         { text: 'Health', value: 'Health' },
+        { text: 'Bills', value: 'Bills' },
         { text: 'Other', value: 'Other' },
       ],
       onFilter: (value, record) => record.category === value,
@@ -180,6 +459,7 @@ const ExpenseList = () => {
               <Option value="Office">Office</Option>
               <Option value="Shopping">Shopping</Option>
               <Option value="Health">Health</Option>
+              <Option value="Bills">Bills</Option>
               <Option value="Other">Other</Option>
             </Select>
           );
@@ -347,9 +627,14 @@ const ExpenseList = () => {
         alignItems: 'center'
       }}>
         <div>
-          <h1 style={{ margin: 0, color: '#000', fontSize: '28px' }}>Recent Expenses</h1>
+          <h1 style={{ margin: 0, color: '#000', fontSize: '28px' }}>Manage Expenses</h1>
           <div style={{ fontSize: '14px', color: '#666', marginTop: '4px' }}>
             View and manage all your expense records
+            {(Object.keys(advancedFilters).length > 0 || searchTerm) && 
+              <span style={{ color: '#000', fontWeight: '500' }}>
+                {' '}• Filtered Results ({filteredExpenses.length} of {expenses.length})
+              </span>
+            }
           </div>
         </div>
         <Button 
@@ -361,6 +646,9 @@ const ExpenseList = () => {
         </Button>
       </div>
 
+      {/* Display active filters */}
+      {getActiveFiltersDisplay()}
+
       {/* Table */}
       <div style={{ 
         backgroundColor: '#fff', 
@@ -370,7 +658,7 @@ const ExpenseList = () => {
       }}>
         <Table
           columns={columns}
-          dataSource={expenses}
+          dataSource={filteredExpenses}
           loading={loading}
           pagination={{
             pageSize: 10,
@@ -382,12 +670,25 @@ const ExpenseList = () => {
           locale={{
             emptyText: (
               <div style={{ padding: '40px', color: '#999' }}>
-                <div style={{ fontSize: '16px', marginBottom: '8px' }}>
-                  No expenses found
-                </div>
-                <div style={{ fontSize: '14px' }}>
-                  Add your first expense to get started!
-                </div>
+                {(Object.keys(advancedFilters).length > 0 || searchTerm) ? (
+                  <>
+                    <div style={{ fontSize: '16px', marginBottom: '8px' }}>
+                      No expenses match your filters
+                    </div>
+                    <div style={{ fontSize: '14px' }}>
+                      Try adjusting your search criteria
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontSize: '16px', marginBottom: '8px' }}>
+                      No expenses found
+                    </div>
+                    <div style={{ fontSize: '14px' }}>
+                      Add your first expense to get started!
+                    </div>
+                  </>
+                )}
               </div>
             )
           }}

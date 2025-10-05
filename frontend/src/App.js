@@ -1,3 +1,4 @@
+import { registerLicense } from '@syncfusion/ej2-base';
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { ConfigProvider, Layout, Menu, Input, Button, Space, Dropdown, Badge } from 'antd';
@@ -26,9 +27,11 @@ import Reports from './components/Reports';
 import ExpenseList from './components/ExpenseList';
 import ProfileSettings from './components/ProfileSettings';
 import AccountSettings from './components/AccountSettings';
-import AdvancedSearch from './components/AdvancedSearch';
+import AdvancedSearchWrapper from './components/AdvancedSearchWrapper';
 import { SettingsProvider } from './context/SettingsContext';
 import 'antd/dist/reset.css';
+
+registerLicense('Ngo9BigBOggjHTQxAR8/V1NFaF5cXGBCf1FpRmJGdld5fUVHYVZUTXxaS00DNHVRdkdmWH9edHVWRWVdUEN+WUtWYEg=');
 
 const { Header, Sider, Content } = Layout;
 const { Search } = Input;
@@ -36,6 +39,7 @@ const { Search } = Input;
 function AppContent() {
   const [collapsed, setCollapsed] = useState(false);
   const [arrowHovered, setArrowHovered] = useState(false);
+  const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);  // Added this line
   const [advancedSearchVisible, setAdvancedSearchVisible] = useState(false);
   const [activeFilters, setActiveFilters] = useState({});
   const [filterCount, setFilterCount] = useState(0);
@@ -260,7 +264,7 @@ function AppContent() {
               bottom: '-14px',
               left: '50%',
               transform: 'translateX(-50%)',
-              zIndex: 9999,  // Very high z-index to ensure it's always on top
+              zIndex: 9999,
               width: '28px',
               height: '28px',
               borderRadius: '50%',
@@ -297,7 +301,7 @@ function AppContent() {
           style={{ 
             borderRight: 0,
             background: '#fff',
-            marginTop: '20px'  // Add top margin to create space for the arrow
+            marginTop: '20px'
           }}
         />
       </Sider>
@@ -337,7 +341,7 @@ function AppContent() {
                   backgroundColor: filterCount > 0 ? '#f0f0f0' : 'transparent'
                 }}
                 size="middle"
-                onClick={() => setAdvancedSearchVisible(true)}
+                onClick={() => setShowAdvancedSearch(true)}  // Changed from setAdvancedSearchVisible
               >
                 Advanced Search
               </Button>
@@ -403,9 +407,9 @@ function AppContent() {
       </Layout>
 
       {/* Advanced Search Modal */}
-      <AdvancedSearch
-        visible={advancedSearchVisible}
-        onClose={() => setAdvancedSearchVisible(false)}
+      <AdvancedSearchWrapper 
+        visible={showAdvancedSearch}
+        onClose={() => setShowAdvancedSearch(false)}
         onSearch={handleAdvancedSearch}
       />
     </Layout>
